@@ -136,7 +136,7 @@ th{background:#111;}
 
 <tr class="linhaConfig1 desconto-animado"><td>Quitação</td><td id="tabela1">-</td></tr>
 <tr class="linhaConfig2 desconto-animado"><td>Junção</td><td id="tabela2">-</td></tr>
-<tr class="linhaConfig3 desconto-animado"><td>Atraso</td><td id="tabela3">-</td></tr>
+<tr class="linhaConfig3 desconto-animado"><td>Anuidade</td><td id="tabela3">-</td></tr>
 <tr id="linhaTabelaPix" class="desconto-animado"><td>PIX Automático</td><td id="tabela4">-</td></tr>
 </table>
 </div>
@@ -193,7 +193,7 @@ th{background:#111;}
 
           <tr class="linhaCalc1 desconto-animado"><td id="calcD1-t">Quitação</td><td id="calcD1">-</td></tr>
           <tr class="linhaCalc2 desconto-animado"><td id="calcD2-t">Junção</td><td id="calcD2">-</td></tr>
-          <tr class="linhaCalc3 desconto-animado"><td id="calcD3-t">Atraso</td><td id="calcD3">-</td></tr>
+          <tr class="linhaCalc3 desconto-animado"><td id="calcD3-t">Anuidade</td><td id="calcD3">-</td></tr>
           <tr id="linhaCalcPix" class="desconto-animado"><td id="calcD4-t">PIX Automático</td><td id="calcD4">-</td></tr>
 
         </table>
@@ -355,23 +355,54 @@ function ajustarCampos(){
     }
 }
 
-function gerarMensagens(){
-    let setor=document.getElementById("setor").value;
-    let msg="", total, vp, qtd, quit, quit12, juncao, atraso;
+function gerarMensagens() {
+    let setor = document.getElementById("setor").value;
+    let msg = "", total, vp, qtd, quit, quit12, juncao, atraso;
 
-    if(setor==="PlayEmDia"){
-        let v=parseFloat(document.getElementById("pedValorParcela").value)||0;
-        let q=parseFloat(document.getElementById("pedQtdParcelas").value)||0;
-        total=v*q;
-        quit=Math.ceil(total*(1-descontos.c1/100));
-        quit12=Math.ceil(quit/12);
-        let v2=v*2,v2d=Math.ceil(v2*(1-descontos.c2/100));
-        let v3=v*3,v3d=Math.ceil(v3*(1-descontos.c3/100));
-        let pix=Math.ceil(v*(1-descontos.c4/100));
+if (setor === "PlayEmDia") {
+    let v = parseFloat(document.getElementById("pedValorParcela").value) || 0;
+    let q = parseFloat(document.getElementById("pedQtdParcelas").value) || 0;
+    total = v * q;
 
-        msg=`No momento você tem *${q} parcelas* restantes no valor de *R$ ${v},00*.\n\n1️⃣ - *QUITAÇÃO* à vista de *R$ ${total},00* por apenas *R$ ${quit},00* via PIX/BOLETO ou em até *12x R$ ${quit12},00* no CARTÃO sem juros. (+ 3 meses de acesso)\n\n2️⃣ - *JUNÇÃO DE 2 PARCELAS* de *R$ ${v2},00* por *R$ ${v2d},00* no PIX/BOLETO ou em 2x no cartão. Vencimento: HOJE\n\n3️⃣ - *ANUIDADE* pague 12 parcelas de *R$ ${v*12},00* por *R$ ${Math.ceil(v*12*(1-descontos.c3/100))},00* no PIX ou em 12x no cartão. Vencimento: HOJE\n\n4️⃣ - *PIX AUTOMÁTICO* em *${q}x R$ ${pix},00* (via PIX todo mês com desconto).\n\n*Gostaria de aproveitar? Digite a melhor opção!*`;
+    // cálculos
+    let quit = total * (1 - descontos.c1 / 100);
+    let quit12 = quit / 12;
+    let v2 = v * 2, v2d = v2 * (1 - descontos.c2 / 100);
+    let v3 = v * 12, v3d = v3 * (1 - descontos.c3 / 100);
+    let pix = v * (1 - descontos.c4 / 100);
 
-    } else if(setor==="Play6"){
+    // função de formatação BRL
+    const f = (n) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // se tiver menos que 14 parcelas → sem anuidade
+    if (q < 14) {
+        msg = `No momento você tem *${q} parcelas* restantes no valor de *R$ ${f(v)}*. 
+
+1️⃣ - *QUITAÇÃO* à vista de *R$ ${f(total)}* por apenas *R$ ${f(quit)}* via PIX/BOLETO ou em até *12x R$ ${f(quit12)}* no CARTÃO sem juros. (+ 3 meses de acesso)
+
+2️⃣ - *JUNÇÃO DE 2 PARCELAS* de *R$ ${f(v * 2)}* por *R$ ${f(v2d)}* no PIX/BOLETO ou em 2x no cartão. Vencimento: HOJE
+
+3️⃣ - *PIX AUTOMÁTICO* em *${q}x R$ ${f(pix)}* (via PIX todo mês com desconto).
+
+*Gostaria de aproveitar? Digite a melhor opção!*`;
+    } 
+    // se tiver 14 parcelas ou mais → com anuidade
+    else {
+        let v3div12 = v3d / 12;
+        msg = `No momento você tem *${q} parcelas* restantes no valor de *R$ ${f(v)}*.
+
+1️⃣ - *QUITAÇÃO* à vista de *R$ ${f(total)}* por apenas *R$ ${f(quit)}* via PIX/BOLETO ou em até *12x R$ ${f(quit12)}* no CARTÃO sem juros. (+ 3 meses de acesso)
+
+2️⃣ - *JUNÇÃO DE 2 PARCELAS* de *R$ ${f(v * 2)}* por *R$ ${f(v2d)}* no PIX/BOLETO ou em 2x no cartão. Vencimento: HOJE
+
+3️⃣ - *ANUIDADE* pague 12 parcelas de *R$ ${f(v3)}* por *R$ ${f(v3d)}* no PIX ou em 12x de *R$ ${f(v3div12)}* no cartão. Vencimento: HOJE
+
+4️⃣ - *PIX AUTOMÁTICO* em *${q}x R$ ${f(pix)}* (via PIX todo mês com desconto).
+
+*Gostaria de aproveitar? Digite a melhor opção!*`;
+    }
+}
+ else if(setor==="Play6"){
         total=parseFloat(document.getElementById("valorTotal").value)||0;
         let juros=parseFloat(document.getElementById("valorComJuros").value)||0;
         quit=Math.ceil(total*(1-descontos.c1/100));
@@ -414,4 +445,3 @@ animarTabela();
 
 </body>
 </html>
-
