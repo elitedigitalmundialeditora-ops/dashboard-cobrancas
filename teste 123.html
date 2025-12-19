@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard de Cobranças</title>
+<style>
+body {
+    margin:0;
+    font-family:'Segoe UI',sans-serif;
+    background:#121212;
+    color:#eee;
+}
+h1,h2,h3{margin:10px 0;}
+button{
+    cursor:pointer;
+    background:#2196f3;
+    color:#fff;
+    transition:.3s;
+    padding:10px 20px;
+    font-weight:bold;
+    border-radius:8px;
+    border:none;
+}
+button:hover{background:#0d6bb8; transform:scale(1.05);}
+.tab{display:none;padding:10px;}
+.tab.active{display:flex; flex-direction:column;}
+
+.card{
+    background:#1f1f1f;
+    padding:15px;
+    margin:10px 0;
+    border-radius:10px;
+    box-shadow:0 0 15px #0af33a22;
+}
+label{margin:5px 0; display:block;}
+input,select{
+    margin:5px 0;
+    padding:8px;
+    border-radius:6px;
+    border:none;
+    background:#121212;
+    color:#eee;
+    box-shadow:0 0 8px #2196f3;
+    transition:0.2s;
+}
+input:focus,select:focus{box-shadow:0 0 12px #0af;outline:none;}
+#resultado{
+    margin-top:15px;
+    background:#1f1f1f;
+    padding:15px;
+    border-radius:8px;
+    white-space:pre-line;
+    box-shadow:0 0 15px #0af33a33;
+}
+table{
+    border-collapse:collapse;
+    margin-top:10px;
+    width:100%;
+    max-width:500px;
+}
+th,td{border:1px solid #333;padding:8px;text-align:center;}
+th{background:#111;}
+.hidden{display:none;}
+
+#notificacao{
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    background:#2196f3;
+    padding:12px 20px;
+    border-radius:8px;
+    color:#fff;
+    box-shadow:0 0 10px #0af;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 1.5s ease;
+    font-weight:bold;
+}
+#notificacao.show{opacity:1;}
+
+/* ANIMAÇÃO SUAVE NA TROCA DE SETOR */
+.desconto-animado {
+    opacity:0;
+    transform:translateY(-6px);
+    transition:0.35s ease;
+}
+.desconto-animado.show {
+    opacity:1;
+    transform:translateY(0);
+}
+
+</style>
+</head>
+<body>
+
+<h1>Dashboard de Cobranças</h1>
+<div class="card" style="display:flex; align-items:center; gap:20px;">
+    <button onclick="mostrarTab('config')">Configuração de Descontos</button>
+    <button onclick="mostrarTab('calculos')">Cálculos</button>
+
+    <!-- AVISO EM VERMELHO (PEDIDO 3) -->
+    <span style="color:#ff4444; font-weight:bold; font-size:14px;">
+        ATENÇÃO: Verifique se os descontos estão configurados corretamente, confira na tabela ao lado.
+    </span>
+</div>
+
+<!-- Aba Configuração -->
+<div id="config" class="tab active">
+<div class="card">
+<h2>Configurar Descontos (%)</h2>
+<label>Setor:
+<select id="setorConfig" onchange="carregarDescontosComAnimacao()">
+<option value="Play1">Play 1</option>
+<option value="Play2">Play 2</option>
+<option value="Play3">Play 3</option>
+<option value="Play6">Play 6</option>
+<option value="PlayEmDia">Play em dia</option>
+</select></label>
+
+<div id="configPadrao">
+<label>Quitação (%):<input type="number" id="descontoQuitacao" onchange="atualizarTabela()"></label>
+<label>Junção (%):<input type="number" id="descontoJuncao" onchange="atualizarTabela()"></label>
+<label>Atraso (%):<input type="number" id="descontoAtraso" onchange="atualizarTabela()"></label>
+</div>
+
+<div id="configPlayEmDia" class="hidden">
+<label>Quitação (%):<input type="number" id="pedQuitacao" onchange="atualizarTabela()"></label>
+<label>2 parcelas (%):<input type="number" id="ped2parcelas" onchange="atualizarTabela()"></label>
+<label>Anuidade (%):<input type="number" id="ped3parcelas" onchange="atualizarTabela()"></label>
+<label>PIX Automático (%):<input type="number" id="pedPixAuto" onchange="atualizarTabela()"></label>
+</div>
+
+<h3>Descontos configurados</h3>
+<table>
+<tr><th>Tipo</th><th>%</th></tr>
+
+<tr class="linhaConfig1 desconto-animado"><td>Quitação</td><td id="tabela1">-</td></tr>
+<tr class="linhaConfig2 desconto-animado"><td>Junção</td><td id="tabela2">-</td></tr>
+<tr class="linhaConfig3 desconto-animado"><td>Anuidade</td><td id="tabela3">-</td></tr>
+<tr id="linhaTabelaPix" class="desconto-animado"><td>PIX Automático</td><td id="tabela4">-</td></tr>
+</table>
+</div>
+</div>
+
+<!-- Aba Cálculos -->
+<div id="calculos" class="tab">
+  <div style="display:flex; flex-wrap:wrap; gap:20px; position:relative;">
+    
+    <!-- Campos à esquerda -->
+    <div style="flex:1; min-width:300px;">
+      <div class="card">
+        <h2>Calcular Negociação</h2>
+        <label>Setor:
+          <select id="setor" onchange="ajustarCamposComAnimacao()">
+            <option value="Play1">Play 1</option>
+            <option value="Play2">Play 2</option>
+            <option value="Play3">Play 3</option>
+            <option value="Play6">Play 6</option>
+            <option value="PlayEmDia">Play em dia</option>
+          </select>
+        </label>
+
+        <div id="camposPadrao">
+          <label>Valor total (sem juros):<input type="number" id="valorTotal"></label>
+          <div id="camposAtraso">
+            <label>Valor de cada parcela:<input type="number" id="valorParcelaUnica"></label>
+            <label>Quantidade em atraso:<input type="number" id="qtdAtraso"></label>
+          </div>
+          <div id="campoValorAtualizado" class="hidden">
+            <label>Valor atualizado (com juros):<input type="number" id="valorComJuros"></label>
+          </div>
+        </div>
+
+        <div id="camposPlayEmDia" class="hidden">
+          <label>Valor da parcela:<input type="number" id="pedValorParcela"></label>
+          <label>Quantidade de parcelas:<input type="number" id="pedQtdParcelas"></label>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+          <button onclick="gerarMensagens()">Gerar mensagens</button>
+          <button onclick="copiarMensagem()">Copiar mensagem</button>
+          <div id="resultado" style="margin-top:10px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela à direita -->
+    <div style="flex:0 0 280px; position:sticky; top:20px; align-self:flex-start;">
+      <div class="card">
+        <h3>Descontos Aplicados</h3>
+        <table style="width:100%; font-size:14px;">
+          <tr><th>Tipo</th><th>%</th></tr>
+
+          <tr class="linhaCalc1 desconto-animado"><td id="calcD1-t">Quitação</td><td id="calcD1">-</td></tr>
+          <tr class="linhaCalc2 desconto-animado"><td id="calcD2-t">Junção</td><td id="calcD2">-</td></tr>
+          <tr class="linhaCalc3 desconto-animado"><td id="calcD3-t">Anuidade</td><td id="calcD3">-</td></tr>
+          <tr id="linhaCalcPix" class="desconto-animado"><td id="calcD4-t">PIX Automático</td><td id="calcD4">-</td></tr>
+
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="notificacao">Mensagem copiada!</div>
+
+<script>
+let descontosSetores={
+    Play1:{c1:30,c2:10,c3:5},
+    Play2:{c1:30,c2:10,c3:5},
+    Play3:{c1:30,c2:10,c3:5},
+    Play6:{c1:30},
+    PlayEmDia:{c1:20,c2:5,c3:6,c4:15}
+},descontos={};
+
+if(localStorage.getItem("descontosSetores")){
+    try{ descontosSetores = JSON.parse(localStorage.getItem("descontosSetores")); }catch(e){}
+}
+
+function animarTabela(){
+    document.querySelectorAll(".desconto-animado").forEach(el=>{
+        el.classList.remove("show");
+        setTimeout(()=>el.classList.add("show"),50);
+    });
+}
+
+function mostrarTab(tab){
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.getElementById(tab).classList.add("active");
+}
+
+/* ========== ALTERAÇÃO: ANIMAÇÃO NA TROCA DO SETOR ========== */
+function carregarDescontosComAnimacao(){
+    carregarDescontos();
+    animarTabela();
+}
+function ajustarCamposComAnimacao(){
+    ajustarCampos();
+    animarTabela();
+}
+/* ============================================================== */
+
+function carregarDescontos(){
+    let setor=document.getElementById("setorConfig").value;
+    descontos={...descontosSetores[setor]};
+
+    document.getElementById("configPadrao").classList.add("hidden");
+    document.getElementById("configPlayEmDia").classList.add("hidden");
+
+    let linha2=document.querySelector(".linhaConfig2");
+    let linha3=document.querySelector(".linhaConfig3");
+
+    if(setor==="Play6"){
+        linha2.style.display="none";
+        linha3.style.display="none";
+    } else {
+        linha2.style.display="";
+        linha3.style.display="";
+    }
+
+    if(setor==="PlayEmDia"){
+        document.getElementById("configPlayEmDia").classList.remove("hidden");
+        document.getElementById("pedQuitacao").value=descontos.c1;
+        document.getElementById("ped2parcelas").value=descontos.c2;
+        document.getElementById("ped3parcelas").value=descontos.c3;
+        document.getElementById("pedPixAuto").value=descontos.c4;
+    }else{
+        document.getElementById("configPadrao").classList.remove("hidden");
+        document.getElementById("descontoQuitacao").value=descontos.c1??0;
+        document.getElementById("descontoJuncao").value=descontos.c2??0;
+        document.getElementById("descontoAtraso").value=descontos.c3??0;
+    }
+
+    atualizarTabelaConfigUI();
+}
+
+function atualizarTabelaConfigUI(){
+    document.getElementById("tabela1").innerText=descontos.c1??"-";
+    document.getElementById("tabela2").innerText=descontos.c2??"-";
+    document.getElementById("tabela3").innerText=descontos.c3??"-";
+
+    const linhaPix=document.getElementById("linhaTabelaPix");
+    if(document.getElementById("setorConfig").value==="PlayEmDia"){
+        linhaPix.style.display="";
+        document.getElementById("tabela4").innerText=descontos.c4??"-";
+    } else {
+        linhaPix.style.display="none";
+    }
+}
+
+function atualizarTabela(){
+    let setor=document.getElementById("setorConfig").value;
+
+    if(setor==="PlayEmDia"){
+        descontosSetores[setor]={
+            c1:parseFloat(document.getElementById("pedQuitacao").value),
+            c2:parseFloat(document.getElementById("ped2parcelas").value),
+            c3:parseFloat(document.getElementById("ped3parcelas").value),
+            c4:parseFloat(document.getElementById("pedPixAuto").value)
+        };
+    }else if(setor==="Play6"){
+        descontosSetores[setor]={c1:parseFloat(document.getElementById("descontoQuitacao").value)};
+    }else{
+        descontosSetores[setor]={
+            c1:parseFloat(document.getElementById("descontoQuitacao").value),
+            c2:parseFloat(document.getElementById("descontoJuncao").value),
+            c3:parseFloat(document.getElementById("descontoAtraso").value)
+        };
+    }
+    localStorage.setItem("descontosSetores",JSON.stringify(descontosSetores));
+    carregarDescontosComAnimacao();
+}
+
+function ajustarCampos(){
+    let setor=document.getElementById("setor").value;
+    descontos=descontosSetores[setor];
+
+    let l2=document.querySelector(".linhaCalc2");
+    let l3=document.querySelector(".linhaCalc3");
+
+    if(setor==="Play6"){
+        l2.style.display="none";
+        l3.style.display="none";
+    } else {
+        l2.style.display="";
+        l3.style.display="";
+    }
+
+    document.getElementById("calcD1").innerText=descontos.c1??"-";
+    document.getElementById("calcD2").innerText=descontos.c2??"-";
+    document.getElementById("calcD3").innerText=descontos.c3??"-";
+
+    const linhaCalcPix=document.getElementById("linhaCalcPix");
+    if(setor==="PlayEmDia"){
+        linhaCalcPix.style.display="";
+        document.getElementById("calcD4").innerText=descontos.c4??"-";
+    } else {
+        linhaCalcPix.style.display="none";
+    }
+
+    document.getElementById("camposPadrao").classList.add("hidden");
+    document.getElementById("camposPlayEmDia").classList.add("hidden");
+    document.getElementById("campoValorAtualizado").classList.add("hidden");
+    document.getElementById("camposAtraso").classList.remove("hidden");
+
+    if(setor==="PlayEmDia"){
+        document.getElementById("camposPlayEmDia").classList.remove("hidden");
+    }else if(setor==="Play6"){
+        document.getElementById("camposPadrao").classList.remove("hidden");
+        document.getElementById("camposAtraso").classList.add("hidden");
+        document.getElementById("campoValorAtualizado").classList.remove("hidden");
+    }else{
+        document.getElementById("camposPadrao").classList.remove("hidden");
+    }
+}
+
+function gerarMensagens() {
+    let setor = document.getElementById("setor").value;
+    let msg = "", total, vp, qtd, quit, quit12, juncao, atraso;
+
+if (setor === "PlayEmDia") {
+    let v = parseFloat(document.getElementById("pedValorParcela").value) || 0;
+    let q = parseFloat(document.getElementById("pedQtdParcelas").value) || 0;
+    total = v * q;
+
+    // cálculos
+    let quit = total * (1 - descontos.c1 / 100);
+    let quit12 = quit / 12;
+    let v2 = v * 2, v2d = v2 * (1 - descontos.c2 / 100);
+    let v3 = v * 12, v3d = v3 * (1 - descontos.c3 / 100);
+    let pix = v * (1 - descontos.c4 / 100);
+
+    // função de formatação BRL
+    const f = (n) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // se tiver menos que 14 parcelas → sem anuidade
+    if (q < 14) {
+        msg = `No momento você tem *${q} parcelas* restantes no valor de *R$ ${f(v)}*. 
+
+1️⃣ - *QUITAÇÃO* à vista de *R$ ${f(total)}* por apenas *R$ ${f(quit)}* via PIX/BOLETO ou em até *12x R$ ${f(quit12)}* no CARTÃO sem juros. (+ 3 meses de acesso)
+
+2️⃣ - *JUNÇÃO DE 2 PARCELAS* de *R$ ${f(v * 2)}* por *R$ ${f(v2d)}* no PIX/BOLETO ou em 2x no cartão. Vencimento: HOJE
+
+3️⃣ - *PIX AUTOMÁTICO* em *${q}x R$ ${f(pix)}* (via PIX todo mês com desconto).
+
+*Gostaria de aproveitar? Digite a melhor opção!*`;
+    } 
+    // se tiver 14 parcelas ou mais → com anuidade
+    else {
+        let v3div12 = v3d / 12;
+        msg = `No momento você tem *${q} parcelas* restantes no valor de *R$ ${f(v)}*.
+
+1️⃣ - *QUITAÇÃO* à vista de *R$ ${f(total)}* por apenas *R$ ${f(quit)}* via PIX/BOLETO ou em até *12x R$ ${f(quit12)}* no CARTÃO sem juros. (+ 3 meses de acesso)
+
+2️⃣ - *JUNÇÃO DE 2 PARCELAS* de *R$ ${f(v * 2)}* por *R$ ${f(v2d)}* no PIX/BOLETO ou em 2x no cartão. Vencimento: HOJE
+
+3️⃣ - *ANUIDADE* pague 12 parcelas de *R$ ${f(v3)}* por *R$ ${f(v3d)}* no PIX ou em 12x de *R$ ${f(v3div12)}* no cartão. Vencimento: HOJE
+
+4️⃣ - *PIX AUTOMÁTICO* em *${q}x R$ ${f(pix)}* (via PIX todo mês com desconto).
+
+*Gostaria de aproveitar? Digite a melhor opção!*`;
+    }
+}
+ else if(setor==="Play6"){
+        total=parseFloat(document.getElementById("valorTotal").value)||0;
+        let juros=parseFloat(document.getElementById("valorComJuros").value)||0;
+        quit=Math.ceil(total*(1-descontos.c1/100));
+        quit12=Math.ceil(quit/12);
+
+        msg=`Valor do débito atualizado: ~*R$ ${juros}*~ ⚠️ \n\n1️⃣ Quitação no PIX: *R$ ${quit},00 vencimento HOJE* 💠 \n2️⃣ Quitação no Cartão: até em 12x de *R$ ${quit12},00 podendo ser de terceiros* 💳 \n3️⃣ *Contraproposta da parte do Cliente*\n\n*Qual a melhor opção para negociar hoje e receber o desconto?*`;
+
+    } else {
+        total=parseFloat(document.getElementById("valorTotal").value)||0;
+        vp=parseFloat(document.getElementById("valorParcelaUnica").value)||0;
+        qtd=parseFloat(document.getElementById("qtdAtraso").value)||0;
+        let atrasoTotal=vp*qtd;
+        quit=Math.ceil(total*(1-descontos.c1/100));
+        quit12=Math.ceil(quit/12);
+        juncao=Math.ceil((atrasoTotal+vp)*(1-descontos.c2/100));
+        atraso=Math.ceil(atrasoTotal*(1-descontos.c3/100));
+
+        if(setor==="Play1"||setor==="Play2")
+            msg=`1️⃣ *Quitação* no boleto à vista ou PIX: *R$ ${quit},00 vencimento HOJE* 💠 (+ 3 meses de acesso)\n\n2️⃣ *Quitação* no Cartão de crédito: até em 12x de *R$ ${quit12},00 podendo ser de terceiros 💳*\n\n3️⃣ Parcela em *atraso + a vencer* por *R$ ${juncao},00 via pix/cartão HOJE*\n\n4️⃣ *Parcela em atraso* por *R$ ${atraso},00 via pix/cartão HOJE*\n\nQual a melhor opção para negociar hoje e receber o desconto?`;
+
+        if(setor==="Play3")
+            msg=`1️⃣ *Quitação* no boleto à vista ou PIX: *R$ ${quit},00 vencimento HOJE* 💠 (+ 3 meses de acesso)\n\n2️⃣ *Quitação* no Cartão de crédito: até em 12x de *R$ ${quit12},00 podendo ser de terceiros 💳*\n\n3️⃣ *Parcela em atraso* por *R$ ${atraso},00 via pix/cartão HOJE*\n\n4️⃣ *Contraproposta da parte do Cliente*\n\nQual a melhor opção para negociar hoje e receber o desconto?`;
+    }
+
+    document.getElementById("resultado").innerText=msg;
+}
+
+function copiarMensagem(){
+    navigator.clipboard.writeText(document.getElementById("resultado").innerText).then(()=>{
+        let notif=document.getElementById("notificacao");
+        notif.classList.add("show");
+        setTimeout(()=>notif.classList.remove("show"),1800);
+    });
+}
+
+carregarDescontos();
+ajustarCampos();
+animarTabela();
+</script>
+
+</body>
+</html>
